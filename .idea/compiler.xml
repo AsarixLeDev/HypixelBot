@@ -9,5 +9,8 @@
         <module name="HypixelBot" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="HypixelBot" target="18" />
+    </bytecodeTargetLevel>
   </component>
 </project>
