@@ -38,7 +38,7 @@ public class Main {
     public static void main(String[] args) {
         fillLists();
         jda = JDABuilder.createDefault("MTAyNTcyNjUzNzcyNDYwMDQ2MA.GhGr0m.n57p25GLYIcD0_8DByh7lmDdVZ3jRZLWFcc1xQ")
-                .setActivity(Activity.playing("Hypixel"))
+                .setActivity(Activity.playing("Hypixel :D"))
                 .addEventListeners(new BitCommand())
                 .build();
         registerCommands();
