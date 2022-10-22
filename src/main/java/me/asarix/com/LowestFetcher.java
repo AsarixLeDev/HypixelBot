@@ -53,11 +53,12 @@ public class LowestFetcher extends TimerTask {
                 String rawName = object.get("item_name").getAsString();
                 String itemBytes = object.get("item_bytes").getAsString();
                 String name = idFromBytes(itemBytes);
+                int amount = amountFromBytes(itemBytes);
                 if (name == null) continue;
                 //System.out.println(name);
                 for (ItemStack item : onGoing.keySet()) {
                     if (item.hasName(name)) {
-                        double price = object.get("starting_bid").getAsDouble();
+                        double price = object.get("starting_bid").getAsDouble() / amount;
                         LowestBinItem lowestBin = onGoing.get(item);
                         lowestBin.request(price);
                     }
@@ -66,7 +67,6 @@ public class LowestFetcher extends TimerTask {
             if (page0.hasNextPage()) {
                 scanPage(page0.getPage() + 1);
             } else {
-                System.out.println("Finished whole scan");
                 completable.complete(onGoing);
             }
         });
@@ -85,6 +85,19 @@ public class LowestFetcher extends TimerTask {
         return compound2.getString("id");
     }
 
+    private int amountFromBytes(String bytes) {
+        NBTList nbtList;
+        try {
+            nbtList = NBTReader.readBase64(bytes).getList("i");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        NBTCompound compound = nbtList.getCompound(0);
+        boolean ok = compound.containsKey("Count");
+        if (!ok) System.out.println("Pas ok");
+        return compound.getInt("Count", 1);
+    }
+
     @Override
     public void run() {
         completable = new CompletableFuture<>();
@@ -92,13 +105,11 @@ public class LowestFetcher extends TimerTask {
         for (ItemStack item : items.keySet())
             onGoing.put(item, new LowestBinItem(item));
         try {
-            System.out.println("Scanning...");
             scanPage(0);
         } catch (Exception e) {
             e.printStackTrace();
         }
         completable.whenComplete(((map, throwable) -> {
-            System.out.println("Scanning done.");
             if (throwable != null) {
                 throwable.printStackTrace();
                 return;

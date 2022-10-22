@@ -66,7 +66,7 @@ public class Recipe {
                     bazaar.add(ingredient);
                 else if (ingredient.fromPnj)
                     pnj.add(ingredient);
-                 else
+                else
                     auction.add(ingredient);
             }
             done[0] = bazaar.isEmpty();
@@ -110,8 +110,7 @@ public class Recipe {
                                 success = true;
                             priceCompletable.complete(total[0]);
                         }
-                    }
-                    catch (Exception e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }));
@@ -136,8 +135,7 @@ public class Recipe {
                 }
             }
             return this;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return this;

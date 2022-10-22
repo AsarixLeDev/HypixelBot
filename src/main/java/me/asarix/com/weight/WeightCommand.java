@@ -21,38 +21,6 @@ import java.util.concurrent.ExecutionException;
 
 public class WeightCommand extends Command {
 
-    Map<String, Double> factors = new HashMap<>();
-
-    public WeightCommand() {
-        factors.put("mining", 1.18207448);
-        factors.put("foraging", 1.232826);
-        factors.put("enchanting", 0.96976583);
-        factors.put("farming", 1.217848139);
-        factors.put("combat", 1.15797687265);
-        factors.put("fishing", 1.406418);
-        factors.put("alchemy", 1.0);
-        factors.put("taming", 1.14744);
-
-        factors.put("excess_mining", 259634.0);
-        factors.put("excess_foraging", 259634.0);
-        factors.put("excess_enchanting", 882758.0);
-        factors.put("excess_farming", 220689.0);
-        factors.put("excess_combat", 275862.0);
-        factors.put("excess_fishing", 88274.0);
-        factors.put("excess_alchemy", 1103448.0);
-        factors.put("excess_taming", 441379.0);
-
-        factors.put("zombie", 2208.0);
-        factors.put("spider", 2118.0);
-        factors.put("wolf", 1962.0);
-        factors.put("enderman", 1430.0);
-
-        factors.put("excess_zombie", 3643.2);
-        factors.put("excess_spider", 3346.44);
-        factors.put("excess_wolf", 2972.43);
-        factors.put("excess_enderman", 2169.31);
-    }
-
     @Override
     public String run(@NotNull SlashCommandInteractionEvent event) throws InterruptedException, ExecutionException {
         OptionMapping optionMapping = event.getOption("player");
@@ -62,8 +30,12 @@ public class WeightCommand extends Command {
         String playerName = optionMapping.getAsString();
         optionMapping = event.getOption("profile");
         String profileName = optionMapping == null ? null : optionMapping.getAsString();
-        PlayerReply.Player player = Main.API.getPlayerByName(playerName).get().getPlayer();
-        SkyBlockProfilesReply reply = Main.API.getSkyBlockProfiles(player.getUuid()).get();
+        UUID uuid = Main.getUUID(playerName);
+        if (uuid == null) {
+            return playerName + " : Ce joueur n'a pas pu être trouvé !";
+        }
+        PlayerReply.Player player = Main.API.getPlayerByUuid(uuid).get().getPlayer();
+        SkyBlockProfilesReply reply = Main.API.getSkyBlockProfiles(uuid).get();
         JsonArray array = reply.getProfiles();
         JsonObject latestProfile = null;
         long latest_save = 0;
@@ -97,18 +69,17 @@ public class WeightCommand extends Command {
         JsonObject pProfile = members.get(fUuid).getAsJsonObject();
         Map<String, Double> skillWeights = new HashMap<>();
         Map<String, Double> slayerWeights = new HashMap<>();
+        Map<String, Double> dungeonWeights = new HashMap<>();
         Map<String, Double> weights = new HashMap<>();
         for (String key : pProfile.keySet()) {
             JsonElement element = pProfile.get(key);
             if (key.startsWith("experience_skill_")) {
                 String skillName = key.replace("experience_skill_", "");
                 if (List.of("carpentry", "runecrafting", "social2").contains(skillName)) continue;
-                System.out.println(skillName);
                 double weight = skillWeight(skillName, element.getAsInt());
                 weights.put(skillName, weight);
                 skillWeights.put(skillName, weight);
-            }
-            if (key.equals("slayer_bosses")) {
+            } else if (key.equals("slayer_bosses")) {
                 JsonObject value = element.getAsJsonObject();
                 for (String slayerName : value.keySet()) {
                     JsonElement slayerData = value.get(slayerName);
@@ -116,39 +87,96 @@ public class WeightCommand extends Command {
                     JsonElement xpData = slayerData.getAsJsonObject().get("xp");
                     if (xpData == null) continue;
                     int xp = xpData.getAsInt();
-                    double weight = slayerWeight(slayerName, xp);
+                    double weight = Slayer.valueOf(slayerName.toUpperCase()).calculate(xp);
                     weights.put(slayerName, weight);
                     slayerWeights.put(slayerName, weight);
                 }
+            } else if (key.equals("dungeons")) {
+                JsonObject value = element.getAsJsonObject();
+                for (String dungKey : value.keySet()) {
+                    if (dungKey.equals("player_classes")) {
+                        JsonObject classes = value.getAsJsonObject(dungKey);
+                        for (Map.Entry<String, JsonElement> entry : classes.entrySet()) {
+                            String name = entry.getKey();
+                            JsonElement expObj = entry.getValue().getAsJsonObject().get("experience");
+                            if (expObj == null)
+                                 continue;
+                            double xp = expObj.getAsDouble();
+                            double weight = DungeonType.valueOf(name.toUpperCase()).calculate(xp);
+                            weights.put(name, weight);
+                            dungeonWeights.put(name, weight);
+                        }
+                    } else if (dungKey.equals("dungeon_types")) {
+                        JsonObject types = value.getAsJsonObject("dungeon_types");
+                        JsonObject cata = types.getAsJsonObject("catacombs");
+                        double xp = cata.get("experience").getAsDouble();
+                        double weight = DungeonType.CATACOMBS.calculate(xp);
+                        weights.put("catacombs", weight);
+                        dungeonWeights.put("catacombs", weight);
+                    }
+                }
             }
         }
-        List<String> keys = new ArrayList<>(weights.keySet());
-        keys = keys.stream().sorted(Comparator.comparingDouble(weights::get).reversed()).toList();
+        Map<String, Double> cleanSkillWeights = new HashMap<>();
+        Map<String, Double> cleanSlayerWeights = new HashMap<>();
+        Map<String, Double> cleanDungeonWeights = new HashMap<>();
+        Map<String, Double> cleanWeights = new HashMap<>();
+        for (String key : skillWeights.keySet()) {
+            Double aDouble = skillWeights.get(key);
+            if (aDouble.isNaN() || aDouble == 0) continue;
+            cleanSkillWeights.put(key, aDouble);
+            cleanWeights.put(key, aDouble);
+        }
+        for (String key : slayerWeights.keySet()) {
+            Double aDouble = slayerWeights.get(key);
+            if (aDouble.isNaN() || aDouble == 0) continue;
+            cleanSlayerWeights.put(key, aDouble);
+            cleanWeights.put(key, aDouble);
+        }
+        for (String key : dungeonWeights.keySet()) {
+            Double aDouble = dungeonWeights.get(key);
+            if (aDouble.isNaN() || aDouble == 0) continue;
+            cleanDungeonWeights.put(key, aDouble);
+            cleanWeights.put(key, aDouble);
+        }
+        List<String> keys = new ArrayList<>(cleanWeights.keySet());
+        keys = keys.stream().sorted(Comparator.comparingDouble(cleanWeights::get).reversed()).toList();
         LinkedHashMap<String, Double> map = new LinkedHashMap<>();
         for (String key : keys)
-            map.put(key, weights.get(key));
+            map.put(key, cleanWeights.get(key));
 
         double total = 0;
-        for (double value : map.values())
+        for (Double value : map.values())
             total += value;
+
+
+        System.out.println(total);
+
         StringBuilder builder = new StringBuilder("**__" + player.getName() + "__**\n\n" +
                 "Weight totale : " + FormatUtil.round(total, 2) + "\n\n");
         for (String key : map.keySet())
             builder.append("**").append(key).append("** : ")
-                    .append(FormatUtil.round(weights.get(key), 2))
+                    .append(FormatUtil.round(cleanWeights.get(key), 2))
                     .append("\n");
 
         double skillTotal = 0;
-        for (double value : skillWeights.values())
+        for (double value : cleanSkillWeights.values())
             skillTotal += value;
-        builder.append("**Total skills** : ")
+        builder.append("\n**Total skills** : ")
                 .append(FormatUtil.round(skillTotal, 2))
                 .append("\n");
         double slayerTotal = 0;
-        for (double value : slayerWeights.values())
+        for (double value : cleanSlayerWeights.values())
             slayerTotal += value;
         builder.append("**Total slayers** : ")
-                .append(FormatUtil.round(slayerTotal, 2));
+                .append(FormatUtil.round(slayerTotal, 2))
+                .append("\n");
+        double djTotal = 0;
+        for (double value : cleanDungeonWeights.values())
+            djTotal += value;
+        builder.append("**Total Dungeons** : ")
+                .append(FormatUtil.round(djTotal, 2))
+                .append("\n");
         event.getHook().sendMessage(builder.toString()).queue();
     }
 
@@ -160,29 +188,7 @@ public class WeightCommand extends Command {
     }
 
     private double skillWeight(String skillName, int xp) {
-        if (!factors.containsKey(skillName))
-             return 0;
-        Skill skill = new Skill(xp, skillName);
-        double level = skill.getLevel();
-        double factor = factors.get(skillName);
-        double levelWeight = Math.pow(level * 10,0.5 + factor + level / 100) / 1250;
-        if (List.of("foraging", "fishing", "alchemy", "taming").contains(skillName))
-            levelWeight = Math.round(levelWeight);
-        double excess = skill.getExcess();
-        double excessFactor = factors.get("excess_" + skillName);
-        double excessWeight = Math.pow(excess/excessFactor, 0.968);
-        return levelWeight + excessWeight;
-    }
-
-    private double slayerWeight(String slayerName, int xp) {
-        if (!factors.containsKey(slayerName))
-            return 0;
-        SlayerLevel skill = new SlayerLevel(slayerName, xp);
-        double factor = factors.get(slayerName);
-        double levelWeight = xp / factor;
-        double excess = skill.getExcess();
-        double excessFactor = factors.get("excess_" + slayerName);
-        double excessWeight = Math.pow(excess/excessFactor, 0.968);
-        return levelWeight + excessWeight;
+        CalculatedSkill skill = Skill.valueOf(skillName.toUpperCase()).calculate(xp);
+        return skill.totalWeight;
     }
 }

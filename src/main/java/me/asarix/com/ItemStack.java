@@ -24,9 +24,6 @@ public class ItemStack {
         this.fromBazaar = Main.bazaarNames.contains(locName);
 
         this.fromPnj = Main.pnjItems.containsKey(locName);
-        if (fromPnj) {
-            System.out.println("From pnj : " + normalName);
-        }
         this.amount = amount;
     }
 
@@ -75,7 +72,8 @@ public class ItemStack {
     public ItemStack copy() {
         return new ItemStack(this.locName, this.amount);
     }
-//TODO non
+
+    //TODO non
     public double getLowestBin() {
         return LowestFetcher.getPrice(this);
     }

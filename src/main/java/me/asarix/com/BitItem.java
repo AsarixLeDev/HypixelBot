@@ -11,7 +11,8 @@ public class BitItem extends ItemStack {
     public int getBitNumb() {
         return bitNumb;
     }
- //TODO et si c'est un item bazaar ou pnj ?
+
+    //TODO et si c'est un item bazaar ou pnj ?
     public float pricePerBit() {
         return Math.round((float) getLowestBin() / bitNumb);
     }

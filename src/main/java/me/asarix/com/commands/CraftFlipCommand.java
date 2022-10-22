@@ -57,14 +57,9 @@ public class CraftFlipCommand extends Command {
     }
 
     private void completeItemInfo(SlashCommandInteractionEvent event, final String[] msg, ItemStack item, double price) {
-        System.out.println("Completing price");
         CompletableFuture.supplyAsync(() -> {
             try {
-                System.out.println("ALOOOOOOOOOOOOOOOOOOOOOOO");
                 List<Recipe> recipes = Main.getRecipes(item);
-                System.out.println("Got recipes");
-                if (recipes.isEmpty())
-                    System.out.println("NEGROOOOOOOOOOOOOO");
                 if (recipes.size() == 1 && !recipes.get(0).isCraftable()) {
                     msg[0] += "Cet item n'a pas de craft !";
                     event.getHook().sendMessage(msg[0]).queue();
@@ -78,14 +73,11 @@ public class CraftFlipCommand extends Command {
                         e.printStackTrace();
                     }
                 }
-                System.out.println("Recipes calculated");
                 recipes = recipes.stream()
                         .sorted(Comparator.comparingInt(Recipe::getPrice))
                         .toList();
-                System.out.println("Sorted");
                 int count = 1;
                 for (Recipe recipe : recipes) {
-                    System.out.println(count);
                     msg[0] += "```Possibilité " + count + "```\n";
                     HashMap<ItemStack, Double> prices = recipe.getPrices();
                     for (ItemStack ing : prices.keySet()) {
@@ -106,14 +98,12 @@ public class CraftFlipCommand extends Command {
                     msg[0] += "\n";
                     count++;
                 }
-                System.out.println("Negro");
                 List<String> ms = split(msg[0]);
                 event.getHook().sendMessage(ms.get(0)).queue();
                 if (ms.size() > 1) {
                     for (int i = 1; i < ms.size(); i++)
                         event.getChannel().sendMessage(ms.get(i)).queue();
                 }
-                System.out.println("petasse");
             } catch (Exception e) {
                 e.printStackTrace();
             }

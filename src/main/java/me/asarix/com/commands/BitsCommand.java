@@ -17,7 +17,6 @@ public class BitsCommand extends Command {
     public String run(@NotNull SlashCommandInteractionEvent event) {
         List<BitItem> list = new ArrayList<>();
         for (String itemLocName : Main.bitPrices.keySet()) {
-            System.out.println(itemLocName);
             list.add(new BitItem(itemLocName, getBitNumb(itemLocName)));
         }
         list = list.stream().sorted((a, b) -> (int) (b.pricePerBit() - a.pricePerBit())).toList();

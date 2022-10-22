@@ -16,8 +16,7 @@ public abstract class Command {
             String instant;
             try {
                 instant = run(event);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 event.getHook().sendMessage("Il y a eu une erreur ! " + e.getMessage()).queue();
                 return "Failure.";

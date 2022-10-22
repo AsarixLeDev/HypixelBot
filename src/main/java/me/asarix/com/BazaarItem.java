@@ -35,7 +35,8 @@ public class BazaarItem {
         }
         return new BazaarItem(list);
     }
-//TODO BazaarFetcher
+
+    //TODO BazaarFetcher
     public void scanPage() {
         Main.API.getSkyBlockBazaar().whenComplete((page0, throwable) -> {
             try {
@@ -46,12 +47,9 @@ public class BazaarItem {
                     return;
                 }
                 if (itemStacks.size() == 1) {
-                    System.out.println(1);
                     String productName = mainItem.locName;
-                    System.out.println(productName);
                     SkyBlockBazaarReply.Product product = page0.getProduct(productName);
                     if (product == null) {
-                        System.out.println("non non non");
                         lowest.completeExceptionally(new Throwable("Product doesn't exist !"));
                         return;
                     }
@@ -63,7 +61,6 @@ public class BazaarItem {
                     double orderBuy = buySummary.get(0).getPricePerUnit();
                     double orderSell = sellSummary.get(0).getPricePerUnit();
                     BazaarPrices prices1 = new BazaarPrices(instaBuy, instaSell, orderBuy, orderSell);
-                    System.out.println(prices1);
                     prices.put(mainItem, prices1);
                 } else {
                     Map<String, SkyBlockBazaarReply.Product> products = page0.getProducts();
@@ -85,10 +82,8 @@ public class BazaarItem {
                         prices.put(item, prices1);
                     }
                 }
-                System.out.println("Compeleted bazaar price");
                 lowest.complete(prices);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
