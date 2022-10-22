@@ -2,22 +2,20 @@ package me.asarix.com;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonParser;
-import me.nullicorn.nedit.NBTReader;
-import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.nedit.type.NBTList;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import me.asarix.com.commands.CommandHandler;
+import me.asarix.com.weight.Skill;
+import me.asarix.com.weight.SlayerLevel;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
-import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.Command;
+import net.hypixel.api.HypixelAPI;
+import net.hypixel.api.apache.ApacheHttpClient;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
@@ -25,109 +23,181 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class Main {
+    public static final String variablesPath = "C:\\Users\\Mathieu\\Desktop\\variables.json";
+    public static String botToken;
+    public static String apiKey;
     public static final Map<String, Integer> bitPrices = new HashMap<>();
     private static final Map<String, String> normToLoc = new HashMap<>();
     private static final Map<String, String> locToNorm = new HashMap<>();
+    private static final List<ItemStack> nonBazaarItems = new LinkedList<>();
     public static List<String> reforges = new ArrayList<>();
     public static List<String> bazaarNames = new ArrayList<>();
-    private static final List<ItemStack> nonBazaarItems = new LinkedList<>();
+    public static JDA jda;
     private static File file;
 
-    public static JDA jda;
+    private static final HashMap<String, Double> factors = new HashMap<>();
+    public static final HashMap<String, Double> pnjItems = new HashMap<>();
+    public static HypixelAPI API;
 
     public static void main(String[] args) {
-        fillLists();
-        jda = JDABuilder.createDefault("MTAyNTcyNjUzNzcyNDYwMDQ2MA.GhGr0m.n57p25GLYIcD0_8DByh7lmDdVZ3jRZLWFcc1xQ")
-                .setActivity(Activity.playing("Hypixel :D"))
-                .addEventListeners(new BitCommand())
-                .build();
-        registerCommands();
         try {
+            JsonNode node = new ObjectMapper().readTree(new File(variablesPath));
+            botToken = node.get("BOT_TOKEN").asText();
+            apiKey = node.get("API_KEY").asText();
+            String key = System.getProperty("apiKey", apiKey);
+            API = new HypixelAPI(new ApacheHttpClient(UUID.fromString(key)));
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            System.exit(10);
+        }
+        jda = JDABuilder.createDefault(botToken)
+                .setActivity(Activity.playing("Hypixel :D"))
+                .addEventListeners(new CommandHandler())
+                .build();
+        try {
+            readBzFile();
             readInmFile();
             readBitFile();
+            readPnjFile();
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
-        //test();
         fetchLoop();
+        try {
+            test("b7bb4e3732504848b68cd89615e27177", "8177cfe83a1f4ac886b28e19dff1c156");
+            //test("13e807683a46435fa91aaa9cd0bd12ed", "1771eae87e5c4808982b1838aa03b401");
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void test(String sbProfile, String playerUUID) throws InterruptedException, ExecutionException {
+        factors.put("mining", 1.18207448);
+        factors.put("foraging", 1.232826);
+        factors.put("enchanting", 0.96976583);
+        factors.put("farming", 1.217848139);
+        factors.put("combat", 1.15797687265);
+        factors.put("fishing", 1.406418);
+        factors.put("alchemy", 1.0);
+        factors.put("taming", 1.14744);
+
+        factors.put("excess_mining", 259634.0);
+        factors.put("excess_foraging", 259634.0);
+        factors.put("excess_enchanting", 882758.0);
+        factors.put("excess_farming", 220689.0);
+        factors.put("excess_combat", 275862.0);
+        factors.put("excess_fishing", 88274.0);
+        factors.put("excess_alchemy", 1103448.0);
+        factors.put("excess_taming", 441379.0);
+
+        factors.put("zombie", 2208.0);
+        factors.put("spider", 2118.0);
+        factors.put("wolf", 1962.0);
+        factors.put("enderman", 1430.0);
+
+        factors.put("excess_zombie", 3643.2);
+        factors.put("excess_spider", 3346.44);
+        factors.put("excess_wolf", 2972.43);
+        factors.put("excess_enderman", 2169.31);
+        JsonObject profile = Main.API.getSkyBlockProfile(sbProfile).get().getProfile();
+        JsonObject members = profile.get("members").getAsJsonObject();
+        JsonObject pProfile = members.get(playerUUID).getAsJsonObject();
+        Map<String, Double> skillWeights = new HashMap<>();
+        Map<String, Double> slayerWeights = new HashMap<>();
+        Map<String, Double> weights = new HashMap<>();
+        for (String key : pProfile.keySet()) {
+            JsonElement element = pProfile.get(key);
+            if (key.startsWith("experience_skill_")) {
+                String skillName = key.replace("experience_skill_", "");
+                if (List.of("carpentry", "runecrafting", "social2").contains(skillName)) continue;
+                System.out.println(skillName);
+                double weight = skillWeight(skillName, element.getAsInt());
+                weights.put(skillName, weight);
+                skillWeights.put(skillName, weight);
+            }
+            if (key.equals("slayer_bosses")) {
+                JsonObject value = element.getAsJsonObject();
+                for (String slayerName : value.keySet()) {
+                    JsonElement slayerData = value.get(slayerName);
+                    if (slayerData == null) continue;
+                    JsonElement xpData = slayerData.getAsJsonObject().get("xp");
+                    if (xpData == null) continue;
+                    int xp = xpData.getAsInt();
+                    double weight = slayerWeight(slayerName, xp);
+                    weights.put(slayerName, weight);
+                    slayerWeights.put(slayerName, weight);
+                }
+            }
+        }
+        List<String> keys = new ArrayList<>(weights.keySet());
+        keys = keys.stream().sorted(Comparator.comparingDouble(weights::get).reversed()).toList();
+        LinkedHashMap<String, Double> map = new LinkedHashMap<>();
+        for (String key : keys)
+            map.put(key, weights.get(key));
+
+        double total = 0;
+        for (double value : map.values())
+            total += value;
+        StringBuilder builder = new StringBuilder("**__Asarix__**\n\n" +
+                "Weight totale : " + FormatUtil.round(total, 2) + "\n\n");
+        for (String key : map.keySet())
+            builder.append("**").append(key).append("** : ")
+                    .append(FormatUtil.round(weights.get(key), 2))
+                    .append("\n");
+
+        double skillTotal = 0;
+        for (double value : skillWeights.values())
+            skillTotal += value;
+        builder.append("**Total skills** : ")
+                .append(FormatUtil.round(skillTotal, 2))
+                .append("\n");
+        double slayerTotal = 0;
+        for (double value : slayerWeights.values())
+            slayerTotal += value;
+        builder.append("**Total slayers** : ")
+                .append(FormatUtil.round(slayerTotal, 2));
+        System.out.println(builder);
+    }
+
+    private static double skillWeight(String skillName, int xp) {
+        if (!factors.containsKey(skillName))
+            return 0;
+        Skill skill = new Skill(xp, skillName);
+        double level = skill.getLevel();
+        double factor = factors.get(skillName);
+        double levelWeight = Math.pow(level * 10,0.5 + factor + level / 100) / 1250;
+        double excess = 0;
+        if (skill.isMaxed()) {
+            levelWeight = Math.round(levelWeight);
+            excess = xp - skill.getMaxXp();
+        }
+        System.out.println("---------------- excess " + skillName + " -----------------");
+        System.out.println(excess);
+        System.out.println("---------------- excess " + skillName + " -----------------");
+        double excessFactor = factors.get("excess_" + skillName);
+        double excessWeight = Math.pow(excess/excessFactor, 0.968);
+        return levelWeight + excessWeight;
+    }
+
+    private static double slayerWeight(String slayerName, int xp) {
+        if (!factors.containsKey(slayerName))
+            return 0;
+        SlayerLevel skill = new SlayerLevel(slayerName, xp);
+        double factor = factors.get(slayerName);
+        double levelWeight = xp / factor;
+        double excess = skill.getExcess();
+        double excessFactor = factors.get("excess_" + slayerName);
+        double excessWeight = Math.pow(excess/excessFactor, 0.968);
+        return levelWeight + excessWeight;
     }
 
     private static void fetchLoop() {
         Timer timer = new Timer();
         TimerTask lowestFetcher = new LowestFetcher(nonBazaarItems);
-        timer.schedule(lowestFetcher, 0, 60*1000);
-    }
-
-    private static void test() {
-        String bordel = "H4sIAAAAAAAAAFVUzW7bRhAeWXYiMUFjFCn6i2BbNEFS1wkpS7LkQwGBlh3BTgJYrnooCmG1HJELL7kCuYzjY1+gT9Cedegz9KJHyYMUnSVFyxUo7s7fN7Oz39ABaEJNOgBQ24ItGdQe12DH13liag7UDQ+bsI2JiMD+avDg52SWIr/iM4W1OjRfywBPFA8zsv7rwP1AZgvFbyjoXKfYIO1X8PVqeXjMYx7iEVstxZ7X7tCKz/da7gv4hoxjk2ISmqg099yN9Vuy+qk0zI94Im7jn9Laf243L+C7yuV/KTx37dN2yedz8hklBpWSIa5x+F7HhSe06f1K/49//U7v327FP/+wIpXfWS2D1VKVb1/HM80mBPyjRfcV8vd4R6YypOCKTaBlxXwms3hjHiYBpmxM7aFlo/2AIjeEAj8V0gJTaWtko9Go8jmRaWYYtUlekf429FTyxLAzqZQFhB6pRvGCK5mEd6PP0USkNDebpOdyjoSHVCs5gmdVubjaOIwFnSwJCfcO0Dji6SLBLKNk1Pb+ZZTbIymdBpvICSY61rn1AfjBXr3NYvvtdYpLOQyKi2JGs6IjMSakfFlcJD0XKFBSVymiW7grm7CMgSckz1Md341k1xEmLEIVvKSMT1fL7mAm7XGP2FjnSqQ3lk90exej09eXzD8f+WfwjAJPuUwKtrRc9+Pf/7ATTLWwbSIbD8mYGfiM9lUuNtepLaudwZdFrT2LP1f6mvk6M5ZUBx48Jv0bnvCNjuDhU9L6WqtAXydHaxCAXeqXLWxwMWTjX95dHDdg+y2PEb6ous0mmiYsoHadcUOo4MCj4QeT8oEhNsyIOFkddiNtpgttuNFTYUeXoJ0GNGIdyLnEFHYyi9Ww8w2PJu9Gx8Pj0+H0bHA5eDtw4KGdb2ISHdEQWkOuOUQo9TpsKyIGbXfIItYEL8VPcmVkzA1SUpqLUnlPFENRCs2solGJRZmoldOsGIHSxcFbxpc+jiJuTjPLzVJxH8sJKf0fhpb006uC9GvV3I4HhdjxINU2Vfp+zcLS44HZMLWqrOJyVXYxrGujqibGykCXkufUue/bPXGIPd7db/Xn/f029w73+zOB+26/7XZEu9MV7YMGNKkpmBkeL2DXc1953qtWi3WPWgds8AZgC+6VHyr7Pf0PsnHann4FAAA\u003d";
-        try {
-            NBTList nbtList = NBTReader.readBase64(bordel).getList("i");
-            NBTCompound compound = nbtList.getCompound(0);
-            NBTCompound compound1 = compound.getCompound("tag");
-            NBTCompound compound2 = compound1.getCompound("ExtraAttributes");
-            System.out.println(compound2.getString("id"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (true)
-             return;
-        List<Recipe> recipes = getRecipes("Livid Dagger");
-        int count = 1;
-        //System.out.println("Recipe size : " + recipes.size());
-        for (int i = recipes.size()-1; i >= 0; i--) {
-            Recipe recipe = recipes.get(i);
-            //System.out.println("/////////////////////recipe " + count + "/////////////////////");
-            //recipe.print();
-
-            try {
-                //System.out.println("Getting price...");
-                recipe.calculate().getPriceCompletable().get();
-                if (recipe.isSuccessful()) {
-                    //System.out.println("Recipe is successful !");
-                }
-                else {
-                    //System.out.println("Recipe failed");
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-            //System.out.println("Done scanning");
-
-            count++;
-            //System.out.println("///////////////////recipe " + (count-1) + " - end/////////////////");
-        }
-        //System.out.println("Escaped loop");
-        recipes = recipes.stream().sorted(Comparator.comparingInt(Recipe::getPrice)).toList();
-        for (Recipe recipe : recipes) {
-            //System.out.println("---------------------");
-            if (!recipe.isSuccessful())
-                //System.out.println("ATTENTION : un ou plusieurs items n'ont pas de prix attribué !");
-            for (ItemStack item : recipe.getIngredients());
-                //System.out.println(item.normalName + " x" + item.amount);
-            //System.out.println("Prix : " + FormatUtil.format(recipe.getPrice()));
-        }
-        //System.out.println("Done loading !");
-    }
-
-    public static CompletableFuture<PriceType> getPrice(ItemStack item) {
-        CompletableFuture<PriceType> get = new CompletableFuture<>();
-        if (item.fromBazaar) {
-            BazaarItem bazaarItem = new BazaarItem(item);
-            bazaarItem.getDefaultPrice().whenComplete((bazaarPrices, throwable) -> {
-                if (throwable != null) {
-                    get.completeExceptionally(throwable);
-                }
-                get.complete(PriceType.BAZAAR.of(bazaarPrices.instaSell));
-            });
-        } else {
-            double price = LowestFetcher.getPrice(item.locName);
-            if (price < 0) {
-                get.completeExceptionally(new Throwable("Item not found ! Does it exist ?"));
-            }
-            else get.complete(PriceType.AUCTION.of(price));
-        }
-        return get;
+        timer.schedule(lowestFetcher, 0, 60 * 1000);
     }
 
     public static List<Recipe> getRecipes(ItemStack item) {
@@ -136,7 +206,7 @@ public class Main {
         Recipe currentRecipe = getRecipe(item);
         do {
             if (list.size() > 0) {
-                if (currentRecipe.equals(list.get(list.size()-1)))
+                if (currentRecipe.equals(list.get(list.size() - 1)))
                     break;
             }
             currentRecipe.print();
@@ -154,7 +224,7 @@ public class Main {
     @Nullable
     private static Recipe getExpandedRecipe(Recipe recipe) {
         List<ItemStack> ingredients = recipe.copyOfIngredients();
-        for (int i = ingredients.size()-1; i > 0; i--) {
+        for (int i = ingredients.size() - 1; i > 0; i--) {
             ItemStack itemStack = ingredients.get(i);
             Recipe recipe1 = getRecipe(itemStack);
             if (!recipe1.isCraftable()) continue;
@@ -164,43 +234,12 @@ public class Main {
             ingredients.remove(itemStack);
             List<ItemStack> toAdd = new ArrayList<>();
             for (ItemStack item : recipe1.getIngredients())
-                toAdd.add(new ItemStack(item.locName, item.amount*itemStack.amount));
+                toAdd.add(new ItemStack(item.locName, item.amount * itemStack.amount));
             ingredients.addAll(toAdd);
         }
         if (recipe.getIngredients().equals(ingredients))
             return null;
         return new Recipe(recipe.getTarget().copy(), ingredients);
-    }
-
-    public static List<ItemStack> getIngredients(String itemName) {
-        System.out.println("Getting ingredients for " + itemName);
-        Recipe recipe = getRecipe(itemName);
-        List<ItemStack> ingredients = recipe.getIngredients();
-        if (ingredients.size() == 1 && ingredients.get(0).hasName(itemName))
-            return ingredients;
-        for (int i = ingredients.size() - 1; i >= 0; i--) {
-            ItemStack ing = ingredients.get(i);
-            List<ItemStack> subIng = getIngredients(ing.locName);
-            if (!subIng.contains(ing)) {
-                ingredients.remove(ing);
-                ingredients.addAll(subIng);
-            }
-        }
-        List<ItemStack> fin = new LinkedList<>();
-        loop1:
-        for (ItemStack toAdd : ingredients) {
-            for (ItemStack added : fin) {
-                if (added.equals(toAdd)) {
-                    added.setAmount(added.amount + toAdd.amount);
-                    continue loop1;
-                }
-            }
-            fin.add(toAdd);
-        }
-        for (ItemStack itemStack : fin) {
-            System.out.println(itemStack.normalName + " : " + itemStack.amount);
-        }
-        return fin;
     }
 
     public static String normToLoc(String itemName) {
@@ -223,22 +262,12 @@ public class Main {
         return null;
     }
 
-    private static void fillLists() {
-        try {
-            JsonNode node = new ObjectMapper().readTree(getFile("bazaarItems.json"));
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
-                bazaarNames.add(entry.getKey());
-            }
-            JsonArray a = (JsonArray) JsonParser.parseReader(
-                    new FileReader(getFile("reforges.json"))
-            );
-            for (int i = 0; i < a.size(); i++) {
-                reforges.add(a.get(i).getAsString());
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    private static void readBzFile() throws IOException {
+        JsonNode node = new ObjectMapper().readTree(getFile("bazaarItems.json"));
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            bazaarNames.add(entry.getKey());
         }
     }
 
@@ -277,6 +306,17 @@ public class Main {
         }
     }
 
+    private static void readPnjFile() throws IOException {
+        JsonNode node = new ObjectMapper().readTree(getFile("pnj_prices.json"));
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            double price = entry.getValue().asDouble();
+            pnjItems.put(entry.getKey(), price);
+            System.out.println("PNJ : " + entry.getKey() + " " + price);
+        }
+    }
+
     public static Recipe getRecipe(String itemName) {
         return getRecipe(new ItemStack(itemName));
     }
@@ -307,19 +347,6 @@ public class Main {
             e.printStackTrace();
             return new Recipe(target);
         }
-    }
-
-    private static void registerCommands() {
-        jda.upsertCommand("bits", "bits").queue();
-        OptionData data = new OptionData(OptionType.STRING, "item_name", "nom de l'item en anglais", true);
-        CommandData cmdData = Commands.slash("lowest", "get lowest bin for item").addOptions(data);
-        jda.upsertCommand(cmdData).queue();
-        data = new OptionData(OptionType.STRING, "item_name", "nom de l'item en anglais", true);
-        cmdData = Commands.slash("price", "get price for item").addOptions(data);
-        jda.upsertCommand(cmdData).queue();
-        data = new OptionData(OptionType.STRING, "item_name", "nom de l'item en anglais", true);
-        cmdData = Commands.slash("craftprice", "get craft price for item").addOptions(data);
-        jda.upsertCommand(cmdData).queue();
     }
 
     public static File getFile(String name) {

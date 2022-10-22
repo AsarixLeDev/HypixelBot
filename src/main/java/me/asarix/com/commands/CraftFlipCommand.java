@@ -3,10 +3,14 @@ package me.asarix.com.commands;
 import me.asarix.com.*;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -14,9 +18,9 @@ import java.util.concurrent.ExecutionException;
 
 public class CraftFlipCommand extends Command {
     private final int MAX_MSG_LENGTH = 1900;
+
     @Override
     public String run(@NotNull SlashCommandInteractionEvent event) {
-        event.deferReply().queue();
         OptionMapping optionMapping = event.getOption("item_name");
         if (optionMapping == null) {
             return "Veuillez spécifier un item !";
@@ -74,6 +78,7 @@ public class CraftFlipCommand extends Command {
                         e.printStackTrace();
                     }
                 }
+                System.out.println("Recipes calculated");
                 recipes = recipes.stream()
                         .sorted(Comparator.comparingInt(Recipe::getPrice))
                         .toList();
@@ -82,12 +87,13 @@ public class CraftFlipCommand extends Command {
                 for (Recipe recipe : recipes) {
                     System.out.println(count);
                     msg[0] += "```Possibilité " + count + "```\n";
-                    for (ItemStack ing : recipe.getPrices().keySet()) {
+                    HashMap<ItemStack, Double> prices = recipe.getPrices();
+                    for (ItemStack ing : prices.keySet()) {
                         msg[0] += ing.getNormalName() + " x" + ing.getAmount();
-                        if (recipe.getPrices().get(ing) < 0)
+                        if (prices.get(ing) < 0)
                             msg[0] += " (non trouvé)";
                         else
-                            msg[0] += " (" + FormatUtil.format(recipe.getPrices().get(ing)) + ")";
+                            msg[0] += " (" + FormatUtil.format(prices.get(ing)) + ")";
                         msg[0] += "\n";
                     }
                     msg[0] += "\n";
@@ -121,7 +127,7 @@ public class CraftFlipCommand extends Command {
         List<String> get = new LinkedList<>();
         while (str.length() > MAX_MSG_LENGTH) {
             String temp = str.substring(0, MAX_MSG_LENGTH);
-            int ind = temp.lastIndexOf("\n")+1;
+            int ind = temp.lastIndexOf("\n") + 1;
             get.add(str.substring(0, ind));
             str = str.substring(ind);
             if (str.isBlank() || str.equals("\n")) break;
@@ -133,6 +139,8 @@ public class CraftFlipCommand extends Command {
 
     @Override
     public CommandData data() {
-        return null;
+        OptionData data = new OptionData(OptionType.STRING, "item_name",
+                "nom de l'item en anglais", true);
+        return Commands.slash("craftflip", "get craft price for item").addOptions(data);
     }
 }

@@ -17,13 +17,31 @@ public class LowestFetcher extends TimerTask {
     public static ConcurrentMap<ItemStack, LowestBinItem> items = new ConcurrentHashMap<>();
     private final ConcurrentMap<ItemStack, LowestBinItem> onGoing = new ConcurrentHashMap<>();
     private CompletableFuture<ConcurrentMap<ItemStack, LowestBinItem>> completable = new CompletableFuture<>();
+
     public LowestFetcher(List<ItemStack> itemList) {
         for (ItemStack item : itemList)
             items.put(item, new LowestBinItem(item));
     }
+
+    public static double getPrice(String itemName) {
+        for (ItemStack itemStack : items.keySet()) {
+            if (itemStack.hasName(itemName))
+                return items.get(itemStack).getPrice();
+        }
+        return -1;
+    }
+
+    public static double getPrice(ItemStack item) {
+        for (ItemStack itemStack : items.keySet()) {
+            if (itemStack.hasName(item.locName))
+                return items.get(itemStack).getPrice();
+        }
+        return -1;
+    }
+
     public void scanPage(int page) {
-        System.out.println("Scanning page " + page);
-        ExampleUtil.API.getSkyBlockAuctions(page).whenComplete((page0, throwable) -> {
+        //System.out.println("Scanning page " + page);
+        Main.API.getSkyBlockAuctions(page).whenComplete((page0, throwable) -> {
             if (throwable != null) {
                 System.err.println("Il y a eu une erreur en analysant les auctions !");
                 return;
@@ -74,39 +92,18 @@ public class LowestFetcher extends TimerTask {
         for (ItemStack item : items.keySet())
             onGoing.put(item, new LowestBinItem(item));
         try {
+            System.out.println("Scanning...");
             scanPage(0);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         completable.whenComplete(((map, throwable) -> {
+            System.out.println("Scanning done.");
             if (throwable != null) {
                 throwable.printStackTrace();
                 return;
             }
             items = new ConcurrentHashMap<>(map);
-            int count = 0;
-            for (ItemStack item : items.keySet()) {
-                if (count++ > 10) break;
-                System.out.println(item.normalName + " : "
-                        + FormatUtil.format(items.get(item).getPrice()));
-            }
         }));
-    }
-
-    public static double getPrice(String itemName) {
-        for (ItemStack itemStack : items.keySet()) {
-            if (itemStack.hasName(itemName))
-                return items.get(itemStack).getPrice();
-        }
-        return -1;
-    }
-
-    public static double getPrice(ItemStack item) {
-        for (ItemStack itemStack : items.keySet()) {
-            if (itemStack.hasName(item.locName))
-                return items.get(itemStack).getPrice();
-        }
-        return -1;
     }
 }
