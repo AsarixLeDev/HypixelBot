@@ -1,8 +1,11 @@
 package me.asarix.com.commands;
 
+import me.asarix.com.Main;
 import me.asarix.com.weight.WeightCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.events.DisconnectEvent;
+import net.dv8tion.jda.api.events.ShutdownEvent;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -40,5 +43,12 @@ public class CommandHandler extends ListenerAdapter {
             return;
         }
         command.execute(event);
+    }
+
+    @Override
+    public void onShutdown(@NotNull ShutdownEvent event) {
+        System.out.println("SHUTDOWN");
+        Main.bazaarTimer.cancel();
+        Main.lowestTimer.cancel();
     }
 }

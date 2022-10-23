@@ -1,29 +1,28 @@
-package me.asarix.com;
+package me.asarix.com.prices;
+
+import me.asarix.com.ItemStack;
 
 public class LowestBinItem extends ItemStack {
     private int instances = 1;
     private double price;
 
+    boolean safe = true;
+
     public LowestBinItem(String itemName, double price) {
-        this(itemName, price, 1);
-    }
-
-    public LowestBinItem(String itemName, double price, int amount) {
-        super(itemName, amount);
+        super(itemName);
         this.price = price;
-        this.amount = amount;
-    }
-
-    public LowestBinItem(ItemStack item) {
-        this(item.normalName, -1, item.amount);
     }
 
     public int getInstanceNumb() {
         return instances;
     }
 
-    public double getPrice() {
+    public double getPrice(int amount) {
         return price * amount;
+    }
+
+    public double getUnitPrice() {
+        return price;
     }
 
     public void request(double value) {
@@ -32,12 +31,16 @@ public class LowestBinItem extends ItemStack {
             this.price = value;
     }
 
+    public void disableSafe() {
+        this.safe = false;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof ItemStack item))
             return false;
-        if (!item.locName.equalsIgnoreCase(locName))
+        if (!similar(item))
             return false;
-        return amount == item.amount;
+        return amount == item.getAmount();
     }
 }

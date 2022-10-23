@@ -1,5 +1,6 @@
 package me.asarix.com;
 
+import me.asarix.com.prices.BazaarPrices;
 import net.hypixel.api.reply.skyblock.SkyBlockBazaarReply;
 
 import java.util.ArrayList;
@@ -109,7 +110,7 @@ public class BazaarItem {
         CompletableFuture<BazaarPrices> get = new CompletableFuture<>();
         lowest.whenComplete(((stringBazaarPricesMap, throwable) -> {
             for (ItemStack item : stringBazaarPricesMap.keySet()) {
-                if (item.hasName(mainItem.normalName))
+                if (item.similar(mainItem))
                     get.complete(stringBazaarPricesMap.get(item));
             }
             get.complete(null);

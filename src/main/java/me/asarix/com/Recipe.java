@@ -1,5 +1,9 @@
 package me.asarix.com;
 
+import me.asarix.com.prices.BazaarFetcher;
+import me.asarix.com.prices.BazaarPrices;
+import me.asarix.com.prices.LowestFetcher;
+
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -60,7 +64,6 @@ public class Recipe {
             List<ItemStack> bazaar = new ArrayList<>();
             List<ItemStack> auction = new ArrayList<>();
             List<ItemStack> pnj = new ArrayList<>();
-            boolean[] done = {false, false, false};
             for (ItemStack ingredient : ingredients) {
                 if (ingredient.fromBazaar)
                     bazaar.add(ingredient);
@@ -69,17 +72,20 @@ public class Recipe {
                 else
                     auction.add(ingredient);
             }
-            done[0] = bazaar.isEmpty();
-            done[1] = auction.isEmpty();
-            done[2] = pnj.isEmpty();
+            boolean[] done = {
+                    bazaar.isEmpty(),
+                    auction.isEmpty(),
+                    pnj.isEmpty()
+            };
             if (!auction.isEmpty()) {
                 for (ItemStack item : auction) {
                     double price = LowestFetcher.getPrice(item) * item.amount;
-                    prices.put(item, price);
                     if (price < 0) {
                         success = false;
+                        prices.put(item, -1.0);
                         continue;
                     }
+                    prices.put(item, price);
                     total[0] += price;
                 }
                 done[1] = true;
@@ -90,30 +96,23 @@ public class Recipe {
                 }
             }
             if (!bazaar.isEmpty()) {
-                BazaarItem bazaarItem = new BazaarItem(bazaar);
-                bazaarItem.getPrices().whenComplete(((map, throwable) -> {
-                    try {
-                        if (throwable != null) {
-                            throwable.printStackTrace();
-                            success = false;
-                            priceCompletable.complete(-1.0);
-                            return;
-                        }
-                        for (ItemStack itemStack : map.keySet()) {
-                            double price = map.get(itemStack).instaBuy * itemStack.amount;
-                            prices.put(itemStack, price);
-                            total[0] += price;
-                        }
-                        done[0] = true;
-                        if (done[1] && done[2]) {
-                            if (success == null)
-                                success = true;
-                            priceCompletable.complete(total[0]);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                for (ItemStack item : bazaar) {
+                    BazaarPrices prices1 = BazaarFetcher.getPrice(item);
+                    if (prices1 == null) {
+                        success = false;
+                        prices.put(item, -1.0);
+                        continue;
                     }
-                }));
+                    double price = prices1.getInstaBuy() * item.amount;
+                    prices.put(item, price);
+                    total[0] += price;
+                }
+                done[0] = true;
+                if (done[2]) {
+                    if (success == null)
+                        success = true;
+                    priceCompletable.complete(total[0]);
+                }
             }
             if (!pnj.isEmpty()) {
                 for (ItemStack itemStack : pnj) {
@@ -128,11 +127,9 @@ public class Recipe {
                     total[0] += price;
                 }
                 done[2] = true;
-                if (done[0] && done[1]) {
-                    if (success == null)
-                        success = true;
-                    priceCompletable.complete(total[0]);
-                }
+                if (success == null)
+                    success = true;
+                priceCompletable.complete(total[0]);
             }
             return this;
         } catch (Exception e) {

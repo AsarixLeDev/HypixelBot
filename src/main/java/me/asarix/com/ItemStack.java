@@ -1,13 +1,16 @@
 package me.asarix.com;
 
+import me.asarix.com.prices.BazaarFetcher;
+import me.asarix.com.prices.LowestFetcher;
+
 import java.util.Objects;
 
 public class ItemStack {
-    String normalName;
-    String locName;
-    int amount;
-    boolean fromBazaar;
-    boolean fromPnj;
+    protected String normalName;
+    protected String locName;
+    protected int amount;
+    protected boolean fromBazaar;
+    protected boolean fromPnj;
 
     public ItemStack(String itemName, int amount) throws RuntimeException {
         String locName = Main.normToLoc(itemName);
@@ -21,7 +24,7 @@ public class ItemStack {
             this.locName = locName;
             this.normalName = Main.locToNorm(locName);
         }
-        this.fromBazaar = Main.bazaarNames.contains(locName);
+        this.fromBazaar = BazaarFetcher.isFromBazaar(locName);
 
         this.fromPnj = Main.pnjItems.containsKey(locName);
         this.amount = amount;
@@ -67,6 +70,10 @@ public class ItemStack {
     public boolean hasName(String name) {
         return normalName.equalsIgnoreCase(name)
                 || locName.equalsIgnoreCase(name);
+    }
+
+    public boolean similar(ItemStack item) {
+        return hasName(item.locName);
     }
 
     public ItemStack copy() {

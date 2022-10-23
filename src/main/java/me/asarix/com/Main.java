@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.asarix.com.commands.CommandHandler;
+import me.asarix.com.prices.BazaarFetcher;
+import me.asarix.com.prices.LowestFetcher;
 import me.asarix.com.weight.CalculatedSkill;
 import me.asarix.com.weight.Skill;
 import net.dv8tion.jda.api.JDA;
@@ -27,14 +29,14 @@ public class Main {
     public static final HashMap<String, Double> pnjItems = new HashMap<>();
     private static final Map<String, String> normToLoc = new HashMap<>();
     private static final Map<String, String> locToNorm = new HashMap<>();
-    private static final List<ItemStack> nonBazaarItems = new LinkedList<>();
     public static String botToken;
     public static String apiKey;
     public static List<String> reforges = new ArrayList<>();
-    public static List<String> bazaarNames = new ArrayList<>();
     public static JDA jda;
     public static HypixelAPI API;
     private static File file;
+    public static Timer lowestTimer;
+    public static Timer bazaarTimer;
 
     public static void main(String[] args) {
         try {
@@ -52,13 +54,12 @@ public class Main {
                 .addEventListeners(new CommandHandler())
                 .build();
         try {
-            readBzFile();
             readInmFile();
             readBitFile();
             readPnjFile();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+            System.exit(10);
         }
         fetchLoop();
     }
@@ -69,9 +70,13 @@ public class Main {
     }
 
     private static void fetchLoop() {
-        Timer timer = new Timer();
-        TimerTask lowestFetcher = new LowestFetcher(nonBazaarItems);
-        timer.schedule(lowestFetcher, 0, 60 * 1000);
+        lowestTimer = new Timer();
+        TimerTask lowestFetcher = new LowestFetcher();
+        lowestTimer.schedule(lowestFetcher, 0, 60 * 1000);
+
+        bazaarTimer = new Timer();
+        TimerTask bazaarFetcher = new BazaarFetcher();
+        bazaarTimer.schedule(bazaarFetcher, 0, 60 * 1000);
     }
 
     public static List<Recipe> getRecipes(ItemStack item) {
@@ -134,15 +139,6 @@ public class Main {
         return null;
     }
 
-    private static void readBzFile() throws IOException {
-        JsonNode node = new ObjectMapper().readTree(getFile("bazaarItems.json"));
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            bazaarNames.add(entry.getKey());
-        }
-    }
-
     private static void readInmFile() throws IOException {
         URL url = new URL("https://raw.githubusercontent.com/kr45732/skyblock-plus-data/main/InternalNameMappings.json");
         ObjectMapper mapper = new ObjectMapper();
@@ -154,8 +150,6 @@ public class Main {
             String name = node1.get("name").textValue();
             normToLoc.put(name, entry.getKey());
             locToNorm.put(entry.getKey(), name);
-            if (!bazaarNames.contains(entry.getKey()))
-                nonBazaarItems.add(new ItemStack(name));
         }
         file = getFile("InternalNameMappings.json");
         if (!file.createNewFile()) {

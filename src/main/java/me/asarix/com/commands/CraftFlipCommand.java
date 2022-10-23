@@ -1,6 +1,7 @@
 package me.asarix.com.commands;
 
 import me.asarix.com.*;
+import me.asarix.com.prices.LowestFetcher;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
