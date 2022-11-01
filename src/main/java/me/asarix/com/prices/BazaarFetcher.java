@@ -2,7 +2,6 @@ package me.asarix.com.prices;
 
 import me.asarix.com.ItemStack;
 import me.asarix.com.Main;
-import me.asarix.com.prices.BazaarPrices;
 import net.hypixel.api.reply.skyblock.SkyBlockBazaarReply;
 
 import java.util.List;
@@ -48,8 +47,6 @@ public class BazaarFetcher extends TimerTask {
                 }
                 Map<String, SkyBlockBazaarReply.Product> map = page0.getProducts();
                 for (String key : map.keySet()) {
-                    if (key.toLowerCase().contains("diamond"))
-                        System.out.println(key);
                     SkyBlockBazaarReply.Product product = map.get(key);
                     SkyBlockBazaarReply.Product.Status status = product.getQuickStatus();
                     double instaBuy = status.getBuyPrice();
@@ -60,8 +57,7 @@ public class BazaarFetcher extends TimerTask {
                     double orderSell = sellSummary.isEmpty() ? -1 : sellSummary.get(0).getPricePerUnit();
                     prices.put(key, new BazaarPrices(instaBuy, instaSell, orderBuy, orderSell));
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
@@ -73,7 +69,6 @@ public class BazaarFetcher extends TimerTask {
             prices1.disableSafe();
         try {
             scan();
-            //System.out.println(prices.get("ENCHANTED_DIAMOND").toString());
         } catch (Exception e) {
             e.printStackTrace();
         }

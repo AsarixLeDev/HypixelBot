@@ -1,5 +1,7 @@
 package me.asarix.com.commands;
 
+import me.asarix.com.PermLevel;
+import me.asarix.com.UserManager;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +17,10 @@ public abstract class Command {
         CompletableFuture.supplyAsync(() -> {
             String instant;
             try {
-                instant = run(event);
+                if (!UserManager.hasPerm(event.getUser(), permLevel()))
+                    instant = "Tu n'as pas les permissions pour utiliser la commandes !";
+                else
+                    instant = run(event);
             } catch (Exception e) {
                 e.printStackTrace();
                 event.getHook().sendMessage("Il y a eu une erreur ! " + e.getMessage()).queue();
@@ -25,4 +30,6 @@ public abstract class Command {
             return "Done.";
         });
     }
+
+    public abstract PermLevel permLevel();
 }

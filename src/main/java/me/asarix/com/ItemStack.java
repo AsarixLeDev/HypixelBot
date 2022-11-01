@@ -80,8 +80,45 @@ public class ItemStack {
         return new ItemStack(this.locName, this.amount);
     }
 
-    //TODO non
-    public double getLowestBin() {
-        return LowestFetcher.getPrice(this);
+    public double getUnitPrice() {
+        if (fromPnj)
+            return Main.pnjItems.get(locName);
+        if (fromBazaar)
+            return BazaarFetcher.getPrice(locName).getInstaBuy();
+        return LowestFetcher.getPrice(locName);
+    }
+
+    public double getPrice() {
+        if (fromPnj)
+            return Main.pnjItems.get(locName) * amount;
+        if (fromBazaar)
+            return BazaarFetcher.getPrice(locName).getInstaBuy() * amount;
+        return LowestFetcher.getPrice(locName) * amount;
+    }
+
+    public double getPrice(int amount) {
+        if (fromPnj)
+            return Main.pnjItems.get(locName) * amount;
+        if (fromBazaar)
+            return BazaarFetcher.getPrice(locName).getInstaBuy() * amount;
+        return LowestFetcher.getPrice(locName) * amount;
+    }
+
+    public double getUnsafeUnitPrice() {
+        if (fromPnj || fromBazaar)
+            return getUnitPrice();
+        return LowestFetcher.getUnsafePrice(locName);
+    }
+
+    public double getUnsafePrice() {
+        if (fromPnj || fromBazaar)
+            return getUnitPrice();
+        return LowestFetcher.getUnsafePrice(locName) * amount;
+    }
+
+    public double getUnsafePrice(int amount) {
+        if (fromPnj || fromBazaar)
+            return getUnitPrice();
+        return LowestFetcher.getUnsafePrice(locName) * amount;
     }
 }

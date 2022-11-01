@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
 public class CalculatedSkill {
-    public double totalWeight;
+    public Weight totalWeight;
     int level;
     double excess;
     double xpForNext;
@@ -29,7 +29,7 @@ public class CalculatedSkill {
             weight = Math.round(weight);
         }
         excessWeight = Math.pow(excess / div, 0.968);
-        totalWeight = weight + excessWeight;
+        totalWeight = new Weight(weight,excessWeight);
     }
 
     private void calculate(long xp) {

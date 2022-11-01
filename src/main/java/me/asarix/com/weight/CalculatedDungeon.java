@@ -5,7 +5,7 @@ import java.util.LinkedList;
 
 public class CalculatedDungeon {
 
-    public double totalWeight;
+    public Weight totalWeight;
     double xp;
     double modifier;
     int level;
@@ -35,7 +35,7 @@ public class CalculatedDungeon {
             excessWeight = Math.pow(remaining / splitter, 0.968);
         }
 
-        totalWeight = weight + excessWeight;
+        totalWeight = new Weight( weight, excessWeight);
     }
 
     private void calculate(double xp) {

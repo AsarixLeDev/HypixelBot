@@ -3,10 +3,9 @@ package me.asarix.com.prices;
 import me.asarix.com.ItemStack;
 
 public class LowestBinItem extends ItemStack {
+    boolean safe = true;
     private int instances = 1;
     private double price;
-
-    boolean safe = true;
 
     public LowestBinItem(String itemName, double price) {
         super(itemName);

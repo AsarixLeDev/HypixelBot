@@ -2,6 +2,7 @@ package me.asarix.com.commands;
 
 import me.asarix.com.FormatUtil;
 import me.asarix.com.ItemStack;
+import me.asarix.com.PermLevel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -18,18 +19,28 @@ public class LowestCommand extends Command {
             return "Veuillez spécifier un item !";
         }
         String option = optionMapping.getAsString();
+        int amount = 1;
+        optionMapping = event.getOption("amount");
+        if (optionMapping != null) {
+            amount = optionMapping.getAsInt();
+        }
         ItemStack item;
         try {
             item = new ItemStack(option);
         } catch (Exception e) {
             return e.getMessage();
         }
-        double price = item.getLowestBin();
-        String msg;
+        boolean unsafe = false;
+        double price = item.getPrice(amount);
+        if (price < 0) {
+            price = item.getUnsafePrice(amount);
+            unsafe = true;
+        }
         if (price < 0)
-            msg = "Item non trouvé ! Existe-t-il ?";
-        else
-            msg = "Prix de " + item.getNormalName() + " : " + FormatUtil.format(price);
+            return "Item non trouvé ! Existe-t-il ?";
+        String msg = "Prix de " + item.getNormalName() + " x" + amount + " : " + FormatUtil.format(price);
+        if (unsafe)
+            msg += "\n (attention : cet item n'est pas en vente actuellement";
         return msg;
     }
 
@@ -37,6 +48,13 @@ public class LowestCommand extends Command {
     public CommandData data() {
         OptionData data = new OptionData(OptionType.STRING, "item_name",
                 "nom de l'item en anglais", true);
-        return Commands.slash("price", "get price for item").addOptions(data);
+        OptionData data1 = new OptionData(OptionType.INTEGER, "amount",
+                "nombre d'items désirés", false);
+        return Commands.slash("price", "get price for item").addOptions(data, data1);
+    }
+
+    @Override
+    public PermLevel permLevel() {
+        return PermLevel.ACCESS;
     }
 }

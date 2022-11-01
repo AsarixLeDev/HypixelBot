@@ -3,6 +3,7 @@ package me.asarix.com.commands;
 import me.asarix.com.BitItem;
 import me.asarix.com.FormatUtil;
 import me.asarix.com.Main;
+import me.asarix.com.PermLevel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.internal.interactions.CommandDataImpl;
@@ -26,7 +27,7 @@ public class BitsCommand extends Command {
             msg.append(i + 1).append(". **").append(item.getNormalName()).append("** ")
                     .append(FormatUtil.round(item.pricePerBit()))
                     .append(" par bit (")
-                    .append(FormatUtil.round(item.getLowestBin()))
+                    .append(FormatUtil.round(item.getUnitPrice()))
                     .append(" en lowest BIN pour ")
                     .append(item.getBitNumb()).append(" bits)\n");
         }
@@ -45,5 +46,10 @@ public class BitsCommand extends Command {
     @Override
     public CommandData data() {
         return new CommandDataImpl("bits", "Most profitable bits items");
+    }
+
+    @Override
+    public PermLevel permLevel() {
+        return PermLevel.ACCESS;
     }
 }

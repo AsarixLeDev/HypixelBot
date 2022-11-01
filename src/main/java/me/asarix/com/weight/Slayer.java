@@ -14,9 +14,9 @@ public enum Slayer {
         this.div = div;
     }
 
-    public double calculate(long xp) {
+    public Weight calculate(long xp) {
         if (xp <= 1000000)
-            return (float) xp / this.div;
+            return new Weight((float) xp / this.div, 0);
         double base = 1000000.0 / div;
         long remaining = xp - 1000000;
 
@@ -30,6 +30,6 @@ public enum Slayer {
             modifier += this.modifier;
             remaining -= left;
         }
-        return base + overflow;
+        return new Weight(base, overflow);
     }
 }

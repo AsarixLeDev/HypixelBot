@@ -29,4 +29,9 @@ public class FormatUtil {
         formatter.setDecimalFormatSymbols(symbols);
         return formatter.format(numb);
     }
+
+    public static String firstCap(String word) {
+        String fLetter = word.substring(0, 1).toUpperCase();
+        return fLetter + word.substring(1);
+    }
 }

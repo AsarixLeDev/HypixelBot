@@ -9,26 +9,49 @@ import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TimerTask;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class LowestFetcher extends TimerTask {
-    private static final ConcurrentMap<String, LowestBinItem> onGoing = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Double> data = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Double> latest = new ConcurrentHashMap<>();
+    private static boolean onGoing = false;
+
+    private static List<String> invalidNames = new ArrayList<>();
+
+    public static double getUnsafePrice(String itemName) {
+        for (String name : data.keySet()) {
+            if (name.equalsIgnoreCase(itemName))
+                return data.get(name);
+        }
+        return -1;
+    }
+
+    public static double getUnsafePrice(ItemStack item) {
+        for (String name : data.keySet()) {
+            if (item.hasName(name))
+                return data.get(name) * item.getAmount();
+        }
+        return -1;
+    }
 
     public static double getPrice(String itemName) {
-        for (String name : onGoing.keySet()) {
+        if (onGoing) return -1;
+        for (String name : latest.keySet()) {
             if (name.equalsIgnoreCase(itemName))
-                return onGoing.get(name).getUnitPrice();
+                return latest.get(name);
         }
         return -1;
     }
 
     public static double getPrice(ItemStack item) {
-        for (String name : onGoing.keySet()) {
+        if (onGoing) return -1;
+        for (String name : latest.keySet()) {
             if (item.hasName(name))
-                return onGoing.get(name).getUnitPrice() * item.getAmount();
+                return latest.get(name) * item.getAmount();
         }
         return -1;
     }
@@ -48,24 +71,27 @@ public class LowestFetcher extends TimerTask {
                     String itemBytes = object.get("item_bytes").getAsString();
                     String name = idFromBytes(itemBytes);
                     int amount = amountFromBytes(itemBytes);
-                    double price = object.get("starting_bid").getAsDouble();
+                    double price = object.get("starting_bid").getAsDouble() / amount;
                     if (name == null) continue;
-                    LowestBinItem lowestBin = onGoing.get(name);
-                    if (lowestBin != null)
-                        lowestBin.request(price);
+                    Double lowestBin = latest.get(name);
+                    if (lowestBin != null) {
+                        if (lowestBin > price)
+                            latest.put(name, price);
+                    }
                     else {
                         try {
-                            LowestBinItem toAdd = new LowestBinItem(name, price / amount);
-                            onGoing.put(name, toAdd);
+                            new ItemStack(name);
+                            latest.put(name, price);
+                        } catch (Exception e) {
+                            if (!invalidNames.contains(name))
+                                invalidNames.add(name);
                         }
-                        catch (Exception ignored) {}
                     }
                 }
                 if (page0.hasNextPage()) {
                     scanPage(page0.getPage() + 1);
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
@@ -99,12 +125,17 @@ public class LowestFetcher extends TimerTask {
 
     @Override
     public void run() {
-        for (LowestBinItem item : onGoing.values())
-            item.disableSafe();
+        for (String key : latest.keySet())
+            data.put(key, latest.get(key));
+        onGoing = true;
+        latest.clear();
         try {
             scanPage(0);
         } catch (Exception e) {
             e.printStackTrace();
         }
+        for (String name : invalidNames)
+            System.out.println("Invalid name : " + name);
+        onGoing = false;
     }
 }

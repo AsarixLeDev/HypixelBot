@@ -2,9 +2,7 @@ package me.asarix.com.commands;
 
 import me.asarix.com.Main;
 import me.asarix.com.weight.WeightCommand;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.events.DisconnectEvent;
 import net.dv8tion.jda.api.events.ShutdownEvent;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -16,16 +14,17 @@ import java.util.HashMap;
 
 public class CommandHandler extends ListenerAdapter {
     private final HashMap<String, Command> commandMap = new HashMap<>();
-    private JDA jda;
 
     @Override
     public void onGuildReady(@NotNull GuildReadyEvent event) {
-        jda = event.getJDA();
         Guild guild = event.getGuild();
         registerCommand(new CraftFlipCommand(), guild);
         registerCommand(new LowestCommand(), guild);
         registerCommand(new BitsCommand(), guild);
         registerCommand(new WeightCommand(), guild);
+        registerCommand(new AccessCommand(), guild);
+        registerCommand(new AdminCommand(), guild);
+        registerCommand(new AdminsCommand(), guild);
     }
 
     private void registerCommand(Command command, Guild guild) {

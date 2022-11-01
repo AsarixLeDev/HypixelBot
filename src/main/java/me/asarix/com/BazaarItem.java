@@ -43,7 +43,6 @@ public class BazaarItem {
             try {
                 if (throwable != null) {
                     throwable.printStackTrace();
-                    System.exit(0);
                     lowest.complete(null);
                     return;
                 }

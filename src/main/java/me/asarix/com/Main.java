@@ -7,8 +7,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.asarix.com.commands.CommandHandler;
 import me.asarix.com.prices.BazaarFetcher;
 import me.asarix.com.prices.LowestFetcher;
-import me.asarix.com.weight.CalculatedSkill;
-import me.asarix.com.weight.Skill;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -34,9 +32,9 @@ public class Main {
     public static List<String> reforges = new ArrayList<>();
     public static JDA jda;
     public static HypixelAPI API;
-    private static File file;
     public static Timer lowestTimer;
     public static Timer bazaarTimer;
+    private static File file;
 
     public static void main(String[] args) {
         try {
@@ -47,7 +45,7 @@ public class Main {
             API = new HypixelAPI(new ApacheHttpClient(UUID.fromString(key)));
         } catch (Exception e) {
             e.printStackTrace();
-            System.exit(10);
+            shutDown();
         }
         jda = JDABuilder.createDefault(botToken)
                 .setActivity(Activity.playing("Hypixel :D"))
@@ -57,16 +55,17 @@ public class Main {
             readInmFile();
             readBitFile();
             readPnjFile();
+            UserManager.updateDiscordNames();
         } catch (IOException e) {
             e.printStackTrace();
-            System.exit(10);
+            shutDown();
         }
         fetchLoop();
     }
 
-    private static double skillWeight(String skillName, int xp) {
-        CalculatedSkill skill = Skill.valueOf(skillName.toUpperCase()).calculate(xp);
-        return skill.totalWeight;
+    public static void shutDown() {
+        jda.shutdownNow();
+        System.exit(10);
     }
 
     private static void fetchLoop() {

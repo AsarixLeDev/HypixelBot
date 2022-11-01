@@ -76,6 +76,8 @@ public class CraftFlipCommand extends Command {
                 }
                 recipes = recipes.stream()
                         .sorted(Comparator.comparingInt(Recipe::getPrice))
+                        .filter(Recipe::isSuccessful)
+                        .filter(Recipe::isCraftable)
                         .toList();
                 int count = 1;
                 for (Recipe recipe : recipes) {
@@ -133,5 +135,10 @@ public class CraftFlipCommand extends Command {
         OptionData data = new OptionData(OptionType.STRING, "item_name",
                 "nom de l'item en anglais", true);
         return Commands.slash("craftflip", "get craft price for item").addOptions(data);
+    }
+
+    @Override
+    public PermLevel permLevel() {
+        return PermLevel.ACCESS;
     }
 }
