@@ -29,7 +29,7 @@ public class CalculatedSkill {
             weight = Math.round(weight);
         }
         excessWeight = Math.pow(excess / div, 0.968);
-        totalWeight = new Weight(weight,excessWeight);
+        totalWeight = new Weight(weight, excessWeight);
     }
 
     private void calculate(long xp) {

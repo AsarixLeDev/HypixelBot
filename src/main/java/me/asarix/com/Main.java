@@ -2,14 +2,15 @@ package me.asarix.com;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import me.asarix.com.commands.CommandHandler;
 import me.asarix.com.prices.BazaarFetcher;
 import me.asarix.com.prices.LowestFetcher;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.User;
 import net.hypixel.api.HypixelAPI;
 import net.hypixel.api.apache.ApacheHttpClient;
 import net.hypixel.api.reply.PlayerReply;
@@ -22,14 +23,12 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class Main {
-    public static final String variablesPath = "C:\\Users\\Mathieu\\Desktop\\variables.json";
     public static final Map<String, Integer> bitPrices = new HashMap<>();
     public static final HashMap<String, Double> pnjItems = new HashMap<>();
     private static final Map<String, String> normToLoc = new HashMap<>();
     private static final Map<String, String> locToNorm = new HashMap<>();
     public static String botToken;
     public static String apiKey;
-    public static List<String> reforges = new ArrayList<>();
     public static JDA jda;
     public static HypixelAPI API;
     public static Timer lowestTimer;
@@ -37,20 +36,45 @@ public class Main {
     private static File file;
 
     public static void main(String[] args) {
+//        System.out.println(getVersion());
+        File toCreate = new File(System.getProperty("user.dir") + "/resources");
+        toCreate.mkdirs();
+        JsonNode node;
         try {
-            JsonNode node = new ObjectMapper().readTree(new File(variablesPath));
-            botToken = node.get("BOT_TOKEN").asText();
-            apiKey = node.get("API_KEY").asText();
-            String key = System.getProperty("apiKey", apiKey);
-            API = new HypixelAPI(new ApacheHttpClient(UUID.fromString(key)));
-        } catch (Exception e) {
-            e.printStackTrace();
+            node = new ObjectMapper().readTree(getFile("variables.json"));
+        } catch (IOException e) {
+            System.err.println("Couldn't read variables file");
+            createVariableFile();
             shutDown();
+            return;
         }
+        try {
+            botToken = node.get("BOT_TOKEN").asText();
+            if (botToken.isBlank()) throw new NullPointerException();
+        } catch (NullPointerException e) {
+            System.err.println("Please specify the bot token in the variable file !");
+            createVariableFile();
+            shutDown();
+            return;
+        }
+        try {
+            apiKey = node.get("API_KEY").asText();
+            if (apiKey.isBlank()) throw new NullPointerException();
+        } catch (NullPointerException e) {
+            System.err.println("Please specify the api key in the variable file !");
+            createVariableFile();
+            shutDown();
+            return;
+        }
+        String key = System.getProperty("apiKey", apiKey);
+        API = new HypixelAPI(new ApacheHttpClient(UUID.fromString(key)));
+
         jda = JDABuilder.createDefault(botToken)
                 .setActivity(Activity.playing("Hypixel :D"))
                 .addEventListeners(new CommandHandler())
                 .build();
+        User asarix = jda.retrieveUserById("441284809856122891").complete();
+        UserManager.addAdmin(asarix);
         try {
             readInmFile();
             readBitFile();
@@ -63,8 +87,36 @@ public class Main {
         fetchLoop();
     }
 
+    private static void createVariableFile() {
+        ObjectNode node = new ObjectMapper().createObjectNode();
+        node.set("API_KEY", new TextNode(""));
+        node.set("BOT_TOKEN", new TextNode(""));
+        try {
+            new ObjectMapper().writeValue(getFile("variables.json"), node);
+        } catch (IOException ex) {
+            System.err.println("Failed to write to variable file");
+            shutDown();
+            throw new RuntimeException(ex);
+
+        }
+    }
+
+    private static int getVersion() {
+        String version = System.getProperty("java.version");
+        if (version.startsWith("1.")) {
+            version = version.substring(2, 3);
+        } else {
+            int dot = version.indexOf(".");
+            if (dot != -1) {
+                version = version.substring(0, dot);
+            }
+        }
+        return Integer.parseInt(version);
+    }
+
     public static void shutDown() {
-        jda.shutdownNow();
+        if (jda != null)
+            jda.shutdownNow();
         System.exit(10);
     }
 
@@ -214,13 +266,26 @@ public class Main {
     }
 
     public static File getFile(String name) {
-        return new File(System.getProperty("user.dir") + "/src/main/resources/" + name);
+        File file = new File(System.getProperty("user.dir") + "/resources/" + name);
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+            System.err.println("Failed to create file : " + name);
+            shutDown();
+            throw new RuntimeException(e);
+        }
+        return file;
     }
 
     public static UUID getUUID(String playerName) {
         try {
-            JsonNode node = new ObjectMapper().readTree(getFile("playerIdTranslates.json"));
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            ObjectNode oNode;
+            JsonNode node = new ObjectMapper().readTree(file);
+            if (node instanceof ObjectNode n)
+                oNode = n;
+            else
+                oNode = new ObjectMapper().createObjectNode();
+            Iterator<Map.Entry<String, JsonNode>> fields = oNode.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
                 if (!entry.getKey().equalsIgnoreCase(playerName)) continue;
@@ -239,7 +304,7 @@ public class Main {
                     return;
                 }
                 get.complete(player.getUuid());
-                ((ObjectNode) node).set(player.getName(), JsonNodeFactory.instance.textNode(player.getUuid().toString()));
+                oNode.set(player.getName(), new TextNode(player.getUuid().toString()));
                 ObjectMapper mapper = new ObjectMapper();
                 try {
                     mapper.writeValue(getFile("playerIdTranslates.json"), node);

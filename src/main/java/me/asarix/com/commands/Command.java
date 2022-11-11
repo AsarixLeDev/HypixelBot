@@ -18,7 +18,7 @@ public abstract class Command {
             String instant;
             try {
                 if (!UserManager.hasPerm(event.getUser(), permLevel()))
-                    instant = "Tu n'as pas les permissions pour utiliser la commandes !";
+                    instant = "Tu n'as pas les permissions pour utiliser la commande !";
                 else
                     instant = run(event);
             } catch (Exception e) {

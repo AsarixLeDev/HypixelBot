@@ -218,13 +218,7 @@ public class WeightCommand extends Command {
         title += " (" + FormatUtil.round(dungeonBase, 2) + ")";
         builder.addField(title, dungeonValue.append("\n").toString(), false);
 
-        builder.setAuthor("Asarix");
         builder.setFooter("By Asarix#1234");
-        List<String> urls = List.of("https://www.musicmundial.com/en/wp-content/uploads/2022/01/Mia-Khalifa-died.-Find-out-the-truth-of-what-happened-to-the-actress.jpg",
-                "https://www.starmag.com/wp-content/uploads/2018/06/miakhalifa-326c25fd0ed4921505665ba723ce5804-1200x600.jpg");
-        Random rand = new Random();
-        String randomElement = urls.get(rand.nextInt(urls.size()));
-        builder.setImage(randomElement);
         event.getHook().sendMessageEmbeds(builder.build()).queue();
     }
 

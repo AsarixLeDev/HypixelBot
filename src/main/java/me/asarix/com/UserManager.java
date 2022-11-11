@@ -28,11 +28,17 @@ public class UserManager {
     }
 
     public static void addAccess(User user) {
+        if (hasAccess(user)) return;
         try {
             ObjectMapper mapper = new ObjectMapper();
             File file = Main.getFile("access.json");
+            ObjectNode oNode;
             JsonNode node = mapper.readTree(file);
-            ((ObjectNode) node).put(user.getName(), user.getIdLong());
+            if (node instanceof ObjectNode n)
+                oNode = n;
+            else
+                oNode = new ObjectMapper().createObjectNode();
+            oNode.put(user.getName(), user.getIdLong());
 
             if (!file.createNewFile()) {
                 if (!file.exists()) {
@@ -63,11 +69,18 @@ public class UserManager {
     }
 
     public static void addAdmin(User user) {
+        if (hasAdmin(user)) return;
+        addAccess(user);
         try {
             ObjectMapper mapper = new ObjectMapper();
             File file = Main.getFile("admin.json");
+            ObjectNode oNode;
             JsonNode node = mapper.readTree(file);
-            ((ObjectNode) node).put(user.getName(), user.getIdLong());
+            if (node instanceof ObjectNode n)
+                oNode = n;
+            else
+                oNode = new ObjectMapper().createObjectNode();
+            oNode.put(user.getName(), user.getIdLong());
 
             if (!file.createNewFile()) {
                 if (!file.exists()) {

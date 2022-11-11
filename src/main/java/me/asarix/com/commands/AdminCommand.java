@@ -19,8 +19,6 @@ public class AdminCommand extends Command {
             return "Veuillez spécifier un utilisateur !";
         }
         User user = optionMapping.getAsUser();
-        if (!UserManager.hasAccess(user))
-            UserManager.addAccess(user);
         if (UserManager.hasAdmin(user))
             return user.getName() + " : ce joueur a déjà les permissions administrateur !";
         UserManager.addAdmin(user);

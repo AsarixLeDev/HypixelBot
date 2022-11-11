@@ -20,7 +20,7 @@ public class LowestFetcher extends TimerTask {
     private static final ConcurrentMap<String, Double> latest = new ConcurrentHashMap<>();
     private static boolean onGoing = false;
 
-    private static List<String> invalidNames = new ArrayList<>();
+    private static final List<String> invalidNames = new ArrayList<>();
 
     public static double getUnsafePrice(String itemName) {
         for (String name : data.keySet()) {
@@ -77,8 +77,7 @@ public class LowestFetcher extends TimerTask {
                     if (lowestBin != null) {
                         if (lowestBin > price)
                             latest.put(name, price);
-                    }
-                    else {
+                    } else {
                         try {
                             new ItemStack(name);
                             latest.put(name, price);
