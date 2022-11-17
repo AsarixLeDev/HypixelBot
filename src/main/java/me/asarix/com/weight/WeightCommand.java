@@ -77,7 +77,7 @@ public class WeightCommand extends Command {
             if (key.startsWith("experience_skill_")) {
                 String skillName = key.replace("experience_skill_", "");
                 if (List.of("carpentry", "runecrafting", "social2").contains(skillName)) continue;
-                Weight weight = skillWeight(skillName, element.getAsInt());
+                Weight weight = skillWeight(skillName, element.getAsLong());
                 skillWeights.put(skillName, weight);
             } else if (key.equals("slayer_bosses")) {
                 JsonObject value = element.getAsJsonObject();
@@ -88,7 +88,7 @@ public class WeightCommand extends Command {
                     if (slayerData == null) continue;
                     JsonElement xpData = slayerData.getAsJsonObject().get("xp");
                     if (xpData == null) continue;
-                    int xp = xpData.getAsInt();
+                    long xp = xpData.getAsLong();
                     Weight weight = Slayer.valueOf(slayerName.toUpperCase()).calculate(xp);
                     slayerWeights.put(slayerName, weight);
                 }
@@ -102,14 +102,14 @@ public class WeightCommand extends Command {
                             JsonElement expObj = entry.getValue().getAsJsonObject().get("experience");
                             if (expObj == null)
                                 continue;
-                            double xp = expObj.getAsDouble();
+                            long xp = expObj.getAsLong();
                             Weight weight = DungeonType.valueOf(name.toUpperCase()).calculate(xp);
                             dungeonWeights.put(name, weight);
                         }
                     } else if (dungKey.equals("dungeon_types")) {
                         JsonObject types = value.getAsJsonObject("dungeon_types");
                         JsonObject cata = types.getAsJsonObject("catacombs");
-                        double xp = cata.get("experience").getAsDouble();
+                        long xp = cata.get("experience").getAsLong();
                         Weight weight = DungeonType.CATACOMBS.calculate(xp);
                         dungeonWeights.put("catacombs", weight);
                     }
@@ -229,7 +229,7 @@ public class WeightCommand extends Command {
         return Commands.slash("weight", "Weight infos").addOptions(data, data1);
     }
 
-    private Weight skillWeight(String skillName, int xp) {
+    private Weight skillWeight(String skillName, long xp) {
         CalculatedSkill skill = Skill.valueOf(skillName.toUpperCase()).calculate(xp);
         return skill.totalWeight;
     }

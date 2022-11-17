@@ -268,7 +268,8 @@ public class Main {
     public static File getFile(String name) {
         File file = new File(System.getProperty("user.dir") + "/resources/" + name);
         try {
-            file.createNewFile();
+            if (!file.exists())
+                file.createNewFile();
         } catch (IOException e) {
             System.err.println("Failed to create file : " + name);
             shutDown();
@@ -280,7 +281,7 @@ public class Main {
     public static UUID getUUID(String playerName) {
         try {
             ObjectNode oNode;
-            JsonNode node = new ObjectMapper().readTree(file);
+            JsonNode node = new ObjectMapper().readTree(getFile("playerIdTranslates.json"));
             if (node instanceof ObjectNode n)
                 oNode = n;
             else

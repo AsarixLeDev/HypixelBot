@@ -6,39 +6,41 @@ import java.util.LinkedList;
 public class CalculatedDungeon {
 
     public Weight totalWeight;
-    double xp;
+    long xp;
     double modifier;
     int level;
-    double excess;
+    long excess;
     double xpForNext;
     double progress;
     double levelWithProgress;
     double unlockableLevelWithProgress;
     int levelCap = 50;
     int uncappedLevel;
-    double xpCurrent;
-    double remaining;
+    long xpCurrent;
+    long remaining;
     double weight;
     double excessWeight;
 
-    public CalculatedDungeon(double xp, double modifier) {
+    public CalculatedDungeon(long xp, double modifier) {
         this.xp = xp;
         this.modifier = modifier;
         calculate(xp);
-        int level50Experience = 569809640;
+        long level50Experience = 569809640;
         weight = Math.pow(unlockableLevelWithProgress, 4.5) * this.modifier;
         excessWeight = 0;
 
         if (xp > level50Experience) {
-            double remaining = xp - level50Experience;
-            double splitter = (4 * level50Experience) / weight;
+            weight = Math.floor(weight);
+            long remaining = xp - level50Experience;
+            long nom = 4 * level50Experience;
+            double splitter = nom / weight;
             excessWeight = Math.pow(remaining / splitter, 0.968);
         }
 
         totalWeight = new Weight(weight, excessWeight);
     }
 
-    private void calculate(double xp) {
+    private void calculate(long xp) {
         /* the level ignoring the cap and using only the table */
         uncappedLevel = -1;
 
@@ -140,6 +142,5 @@ public class CalculatedDungeon {
         xpTable.put(49, 93000000);
         xpTable.put(50, 116250000);
         return xpTable;
-
     }
 }

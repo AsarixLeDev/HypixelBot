@@ -14,7 +14,7 @@ public enum DungeonType {
         this.modifier = modifier;
     }
 
-    public Weight calculate(double xp) {
+    public Weight calculate(long xp) {
         return new CalculatedDungeon(xp, modifier).totalWeight;
     }
 }
